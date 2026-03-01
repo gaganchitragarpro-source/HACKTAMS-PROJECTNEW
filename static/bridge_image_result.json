@@ -1,0 +1,14 @@
+{
+  "predicted_class": "exposed_bars",
+  "confidence": 0.3095240294933319,
+  "all_probs": {
+    "background": 0.08893240988254547,
+    "crack": 0.19086159765720367,
+    "corrosion_stain": 0.08783993124961853,
+    "efflorescence": 0.10631229728460312,
+    "exposed_bars": 0.3095240294933319,
+    "spallation": 0.2165297567844391
+  },
+  "visual_risk_score": 66.04,
+  "image_path": "uploads/bridge_image.jpg"
+}

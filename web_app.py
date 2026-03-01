@@ -162,9 +162,9 @@ def analyze():
         # Run inference and overwrite heatmap to static dir
         img_result = run_image_inference(i_path, image_model, class_names)
         save_outputs(i_path, img_result, 'static') 
-        visual_score = img_result['visual_score']
+        visual_score = img_result['visual_risk_score']
         img_data = {
-            'score': img_result['visual_score'],
+            'score': img_result['visual_risk_score'],
             'class': img_result['predicted_class'],
             'conf': round(img_result['confidence']*100, 1),
             'url': 'bridge_image_heatmap.jpg', # stored in /static
