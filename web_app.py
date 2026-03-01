@@ -6,8 +6,8 @@ import scipy.signal
 import torch
 import torch.nn as nn
 import joblib
-from flask import Flask, render_template, request, redirect, url_for
-
+from flask import Flask, render_template, request, redirect, url_for, jsonify
+import urllib.parse
 import sys
 sys.path.append('BridgeGuard_AI-main')
 from inference import load_image_model, run_image_inference, save_outputs
@@ -116,29 +116,113 @@ def process_csv(filepath):
     return np.array(features), freqs.tolist(), psd.tolist()
 
 # ── 3. Web Routes ─────────────────────────────────────────────────────────────
+
+# Global arrays to store live streaming data from Phyphox
+live_data = {
+    'x': [], 'y': [], 'z': []
+}
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+@app.route('/live')
+def live_dashboard():
+    return render_template('live.html')
+
+@app.route('/api/stream', methods=['POST'])
+def phyphox_stream():
+    """Receives live X/Y/Z JSON data arrays from the phone's HTTP POST app."""
+    try:
+        req = request.get_json(force=True)
+        if req and 'x' in req and 'y' in req and 'z' in req:
+            live_data['x'].extend(req['x'])
+            live_data['y'].extend(req['y'])
+            live_data['z'].extend(req['z'])
+            
+            # Keep array manageable (last 30 seconds at 100hz = 3000 points)
+            if len(live_data['x']) > 3000:
+                live_data['x'] = live_data['x'][-3000:]
+                live_data['y'] = live_data['y'][-3000:]
+                live_data['z'] = live_data['z'][-3000:]
+                
+        return jsonify({"status": "success"})
+    except Exception as e:
+        print("Live Stream Error:", e)
+        return jsonify({"status": "error"}), 400
+
+@app.route('/api/status', methods=['GET'])
+def live_status():
+    """Outputs the global live buffers to the Javascript frontend for plotting."""
+    return jsonify({
+        'length': len(live_data['x']),
+        'x': live_data['x'],
+        'y': live_data['y'],
+        'z': live_data['z']
+    })
+
+@app.route('/api/clear', methods=['POST'])
+def clear_status():
+    """Wipes the live buffers to prepare for a new presentation run."""
+    live_data['x'].clear()
+    live_data['y'].clear()
+    live_data['z'].clear()
+    return jsonify({"status": "success"})
+
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    if 'healthy_file' not in request.files or 'damaged_file' not in request.files or 'image_file' not in request.files:
-        return redirect(url_for('index'))
+    is_live = request.form.get('is_live', 'false') == 'true'
+    
+    if not is_live:
+        if 'healthy_file' not in request.files or 'damaged_file' not in request.files or 'image_file' not in request.files:
+            return redirect(url_for('index'))
+            
+        healthy_file = request.files['healthy_file']
+        damaged_file = request.files['damaged_file']
+        image_file = request.files['image_file']
         
-    healthy_file = request.files['healthy_file']
-    damaged_file = request.files['damaged_file']
-    image_file = request.files['image_file']
-    
-    h_path = os.path.join(app.config['UPLOAD_FOLDER'], 'healthy.csv')
-    d_path = os.path.join(app.config['UPLOAD_FOLDER'], 'damaged.csv')
-    i_path = os.path.join(app.config['UPLOAD_FOLDER'], 'bridge_image.jpg')
-    healthy_file.save(h_path)
-    damaged_file.save(d_path)
-    image_file.save(i_path)
-    
-    # Process
-    h_feats, h_f, h_p = process_csv(h_path)
-    d_feats, d_f, d_p = process_csv(d_path)
+        h_path = os.path.join(app.config['UPLOAD_FOLDER'], 'healthy.csv')
+        d_path = os.path.join(app.config['UPLOAD_FOLDER'], 'damaged.csv')
+        i_path = os.path.join(app.config['UPLOAD_FOLDER'], 'bridge_image.jpg')
+        healthy_file.save(h_path)
+        damaged_file.save(d_path)
+        image_file.save(i_path)
+        
+        # Process CSVs
+        h_feats, h_f, h_p = process_csv(h_path)
+        d_feats, d_f, d_p = process_csv(d_path)
+    else:
+        # User pressed Run AI on the Live Dashboard!
+        # Use the hardcoded Waddington NY baseline temporarily for the healthy reference
+        h_feats, h_f, h_p = process_csv('phone_healthy.csv') # Assuming this exists or falls back
+        
+        # Build the features array directly from the live HTTP POST buffers!
+        if len(live_data['x']) < 1280:
+            return "Not enough live data buffered (need at least 12.8 seconds)", 400
+            
+        x_arr = np.array(live_data['x'])
+        y_arr = np.array(live_data['y'])
+        z_arr = np.array(live_data['z'])
+        
+        mag = np.sqrt(x_arr**2 + y_arr**2 + z_arr**2)
+        mag = mag - np.mean(mag)
+        wins = [mag[i:i+1280] for i in range(0, len(mag)-1280, 640)]
+        d_feats = np.array([extract_features(w) for w in wins])
+        
+        med_idx = len(wins)//2
+        w_med = wins[med_idx] - np.mean(wins[med_idx])
+        n = len(w_med)
+        fft_vals = np.fft.rfft(w_med * np.hanning(n))
+        freqs = np.fft.rfftfreq(n, d=1.0/SAMPLE_RATE)
+        psd = (np.abs(fft_vals)**2) / (SAMPLE_RATE * n)
+        
+        d_f, d_p = freqs.tolist(), psd.tolist()
+        i_path = None # No image uploaded during live streaming
+        
+        # Wipe buffers after processing
+        live_data['x'].clear()
+        live_data['y'].clear()
+        live_data['z'].clear()
     
     if h_feats is None or d_feats is None:
         return "Error parsing CSV columns. Must contain X, Y, Z axes.", 400
@@ -157,8 +241,8 @@ def analyze():
     avg_h_mse = float(np.mean(h_mse))
     avg_d_mse = float(np.mean(d_mse))
     
-    # Infer Image CNN
-    if image_model:
+    # Infer Image CNN (skip if live stream)
+    if image_model and i_path and os.path.exists(i_path):
         # Run inference and overwrite heatmap to static dir
         img_result = run_image_inference(i_path, image_model, class_names)
         save_outputs(i_path, img_result, 'static') 

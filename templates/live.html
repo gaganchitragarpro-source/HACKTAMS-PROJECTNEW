@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>BridgeGuard Live Telemetry</title>
+    <script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+            background-color: #0d1117;
+            color: #c9d1d9;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .header {
+            width: 100%;
+            padding: 20px;
+            background: #161b22;
+            border-bottom: 1px solid #30363d;
+            text-align: center;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 24px;
+            color: #58a6ff;
+        }
+
+        .status-badge {
+            background: #238636;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-weight: bold;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(35, 134, 54, 0.7);
+            }
+
+            70% {
+                transform: scale(1);
+                box-shadow: 0 0 0 10px rgba(35, 134, 54, 0);
+            }
+
+            100% {
+                transform: scale(0.95);
+                box-shadow: 0 0 0 0 rgba(35, 134, 54, 0);
+            }
+        }
+
+        .chart-container {
+            width: 90%;
+            max-width: 1200px;
+            height: 600px;
+            margin-top: 40px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        button {
+            padding: 10px 20px;
+            background-color: #30363d;
+            color: white;
+            border: 1px solid #8b949e;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #8b949e;
+            color: black;
+        }
+
+        .btn-submit {
+            background-color: #58a6ff;
+            border: none;
+            color: black;
+        }
+
+        .btn-submit:hover {
+            background-color: #79c0ff;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="header">
+        <h1>BridgeGuard Live Structural Telemetry</h1>
+        <div class="status-badge" id="status-badge">Awaiting Data...</div>
+        <div style="font-size: 18px; font-weight: bold;">Buffer: <span id="buffer-size">0</span> / 3000 pts</div>
+    </div>
+
+    <div class="chart-container" id="live-chart"></div>
+
+    <div class="controls">
+        <button onclick="clearBuffer()">Reset Telemetry</button>
+        <button class="btn-submit" onclick="submitToAI()">Run Final PyTorch AI Analysis</button>
+    </div>
+
+    <script>
+        // Initialize empty Plotly graph
+        const layout = {
+            title: 'Real-Time 3D Linear Acceleration',
+            paper_bgcolor: '#161b22', plot_bgcolor: '#161b22',
+            font: { color: '#c9d1d9' },
+            xaxis: { title: 'Time (Samples)', gridcolor: '#30363d' },
+            yaxis: { title: 'Acceleration (m/s²)', gridcolor: '#30363d' },
+            margin: { l: 50, r: 20, t: 40, b: 40 }
+        };
+
+        Plotly.newPlot('live-chart', [
+            { y: [], type: 'scatter', name: 'X-Axis', line: { color: '#ff7b72' } },
+            { y: [], type: 'scatter', name: 'Y-Axis', line: { color: '#79c0ff' } },
+            { y: [], type: 'scatter', name: 'Z-Axis', line: { color: '#d2a8ff' } }
+        ], layout);
+
+        // Poll the Flask API every 500ms for new data
+        setInterval(async () => {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                document.getElementById('buffer-size').innerText = data.length;
+                if (data.length > 0) {
+                    document.getElementById('status-badge').innerText = "Streaming LIVE";
+                    document.getElementById('status-badge').style.background = "#cf222e";
+                } else {
+                    document.getElementById('status-badge').innerText = "Awaiting Data...";
+                    document.getElementById('status-badge').style.background = "#238636";
+                }
+
+                // Fast update graph
+                Plotly.update('live-chart', {
+                    y: [data.x, data.y, data.z]
+                });
+            } catch (err) {
+                console.error("Polling error:", err);
+            }
+        }, 500);
+
+        // Clear buffer button
+        async function clearBuffer() {
+            await fetch('/api/clear', { method: 'POST' });
+        }
+
+        // Submit live data directly to the Autoencoder route
+        async function submitToAI() {
+            // Create a hidden form to dynamically POST to the main /analyze route
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/analyze';
+
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'is_live';
+            hiddenInput.value = 'true';
+
+            form.appendChild(hiddenInput);
+            document.body.appendChild(form);
+            form.submit();
+        }
+    </script>
+</body>
+
+</html>
