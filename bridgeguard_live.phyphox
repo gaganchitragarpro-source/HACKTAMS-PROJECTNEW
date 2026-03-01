@@ -1,0 +1,47 @@
+<phyphox version="1.14" locale="en">
+    <title>BridgeGuard Live Analysis</title>
+    <category>HackTAMS</category>
+    <description>Custom structural health monitor sensor. Press play to instantly stream your phone's vibration telemetry via HTTP POST directly to the BridgeGuard Flask AI Backend.</description>
+    <icon>ic_directions_car</icon>
+    <color>ff0000</color>
+
+    <data-containers>
+        <!-- The Raw Data direct from the device sensors -->
+        <container size="0">accX</container>
+        <container size="0">accY</container>
+        <container size="0">accZ</container>
+
+        <!-- Timestamps -->
+        <container size="0">time</container>
+    </data-containers>
+
+    <input>
+        <!-- Grabbing Linear Acceleration (which automatically subtracts gravity for us) at fastest frequency (100Hz) -->
+        <sensor type="linear_acceleration">
+            <output component="x">accX</output>
+            <output component="y">accY</output>
+            <output component="z">accZ</output>
+            <output component="t">time</output>
+        </sensor>
+    </input>
+
+    <network>
+        <!-- POSTing the buffers out over the local network -->
+        <!-- We default the URL to LOCALHOST for now (127.0.0.1) but the user can hit the gear icon in the app to change the IP address to their exact Wi-Fi address -->
+        <connection id="bridgeguard-stream" service="http/post" address="http://127.0.0.1:5000/api/stream" interval="0.2">
+            <send id="x" type="buffer">accX</send>
+            <send id="y" type="buffer">accY</send>
+            <send id="z" type="buffer">accZ</send>
+            <send id="t" type="buffer">time</send>
+        </connection>
+    </network>
+
+    <views>
+        <view label="Live Status">
+            <info label="Status">Streaming Linear Acceleration</info>
+            <info label="Frequency">100 Hz</info>
+            <info label="Action">Ensure your Laptop's Local IP address is configured in the Network settings, press PLAY, and watch the Flask Dashboard on your laptop!</info>
+        </view>
+    </views>
+
+</phyphox>
