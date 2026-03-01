@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BridgeGuard AI Portal</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      margin: 0; padding: 0;
+      font-family: 'Inter', sans-serif;
+      background-color: #0d1117;
+      color: #c9d1d9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .card {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 40px;
+      width: 100%;
+      max-width: 500px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    }
+    h1 {
+      color: #e6edf3;
+      margin-top: 0;
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    p {
+      color: #8b949e;
+      font-size: 14px;
+      margin-bottom: 30px;
+      line-height: 1.5;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 8px;
+      color: #e6edf3;
+      font-size: 14px;
+    }
+    input[type="file"], input[type="number"] {
+      width: 100%;
+      padding: 10px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      color: #c9d1d9;
+      box-sizing: border-box;
+    }
+    input[type="file"]::file-selector-button {
+      background: #238636;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-right: 15px;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      background-color: #58a6ff;
+      color: #0d1117;
+      border: none;
+      border-radius: 6px;
+      font-weight: 700;
+      font-size: 16px;
+      cursor: pointer;
+      margin-top: 10px;
+      transition: opacity 0.2s;
+    }
+    button:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>🌉 BridgeGuard AI Portal</h1>
+    <p>Upload your 30-second Physics Toolbox baseline and test vibration data. Fuse the mathematical results with the Image Detection (CNN) model to generate a formal research report.</p>
+    
+    <form action="/analyze" method="post" enctype="multipart/form-data">
+      
+      <div class="form-group">
+        <label>1. Baseline Healthy File (CSV)</label>
+        <input type="file" name="healthy_file" accept=".csv" required>
+      </div>
+
+      <div class="form-group">
+        <label>2. Structural Test File (CSV)</label>
+        <input type="file" name="damaged_file" accept=".csv" required>
+      </div>
+
+      <div class="form-group">
+        <label>3. Visual Damage Score (from Image Detector)</label>
+        <input type="number" name="visual_score" placeholder="e.g. 85 for 85% visually damaged" min="0" max="100" required>
+      </div>
+
+      <button type="submit">Run PyTorch Inference & Generate Report</button>
+    </form>
+  </div>
+</body>
+</html>
