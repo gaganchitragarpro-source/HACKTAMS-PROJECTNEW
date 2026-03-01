@@ -1,0 +1,10 @@
+# Datasets and large binary files
+*.h5
+*.npy
+*.pkl
+*.csv
+test*.txt
+DiB/
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
