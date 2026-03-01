@@ -175,7 +175,16 @@ def analyze():
         img_data = None
     
     # Calculate Risk
-    vib_risk = min(100, (avg_d_mse / THRESHOLD) * 50)
+    # Baseline deviation logic: how much worse is the Test data than the Healthy data?
+    deviation = avg_d_mse - avg_h_mse
+    
+    if deviation <= 0:
+        vib_risk = 0.0
+    else:
+        # Scale the deviation to the THRESHOLD. If deviation hits the threshold, risk = 75%.
+        # If it doubles the threshold, risk = 100%.
+        vib_risk = min(100.0, (deviation / THRESHOLD) * 75.0)
+        
     final_risk = (vib_risk * 0.65) + (visual_score * 0.35)
     
     # Pack for UI
