@@ -8,9 +8,14 @@ import torch.nn as nn
 import joblib
 from flask import Flask, render_template, request, redirect, url_for
 
-app = Flask(__name__)
+import sys
+sys.path.append('BridgeGuard_AI-main')
+from inference import load_image_model, run_image_inference, save_outputs
+
+app = Flask(__name__, static_folder='static')
 app.config['UPLOAD_FOLDER'] = 'uploads'
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+os.makedirs('static', exist_ok=True)
 
 # ── 1. PyTorch Model Initialization ──────────────────────────────────────────────
 class DenseAutoencoder(nn.Module):
@@ -40,6 +45,13 @@ except Exception as e:
     print(f"❌ Error loading model: {e}")
     scaler, model = None, None
     THRESHOLD = 0.8244
+
+try:
+    image_model, class_names = load_image_model('BridgeGuard_AI-main/image_model.pth')
+    print("✅ Loaded Vision CNN Model successfully.")
+except Exception as e:
+    print(f"❌ Error loading vision model: {e}")
+    image_model, class_names = None, None
 
 # ── 2. Signal Processing ───────────────────────────────────────────────────────
 SAMPLE_RATE = 128
@@ -110,17 +122,19 @@ def index():
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
-    if 'healthy_file' not in request.files or 'damaged_file' not in request.files:
+    if 'healthy_file' not in request.files or 'damaged_file' not in request.files or 'image_file' not in request.files:
         return redirect(url_for('index'))
         
     healthy_file = request.files['healthy_file']
     damaged_file = request.files['damaged_file']
-    visual_score = float(request.form.get('visual_score', 0))
+    image_file = request.files['image_file']
     
     h_path = os.path.join(app.config['UPLOAD_FOLDER'], 'healthy.csv')
     d_path = os.path.join(app.config['UPLOAD_FOLDER'], 'damaged.csv')
+    i_path = os.path.join(app.config['UPLOAD_FOLDER'], 'bridge_image.jpg')
     healthy_file.save(h_path)
     damaged_file.save(d_path)
+    image_file.save(i_path)
     
     # Process
     h_feats, h_f, h_p = process_csv(h_path)
@@ -129,7 +143,7 @@ def analyze():
     if h_feats is None or d_feats is None:
         return "Error parsing CSV columns. Must contain X, Y, Z axes.", 400
         
-    # Infer
+    # Infer Vibration
     with torch.no_grad():
         h_norm = scaler.transform(h_feats)
         d_norm = scaler.transform(d_feats)
@@ -143,6 +157,23 @@ def analyze():
     avg_h_mse = float(np.mean(h_mse))
     avg_d_mse = float(np.mean(d_mse))
     
+    # Infer Image CNN
+    if image_model:
+        # Run inference and overwrite heatmap to static dir
+        img_result = run_image_inference(i_path, image_model, class_names)
+        save_outputs(i_path, img_result, 'static') 
+        visual_score = img_result['visual_score']
+        img_data = {
+            'score': img_result['visual_score'],
+            'class': img_result['predicted_class'],
+            'conf': round(img_result['confidence']*100, 1),
+            'url': 'bridge_image_heatmap.jpg', # stored in /static
+            'probs': {k: round(v*100, 1) for k, v in img_result['all_probs'].items() if v > 0.01}
+        }
+    else:
+        visual_score = 0
+        img_data = None
+    
     # Calculate Risk
     vib_risk = min(100, (avg_d_mse / THRESHOLD) * 50)
     final_risk = (vib_risk * 0.65) + (visual_score * 0.35)
@@ -153,8 +184,9 @@ def analyze():
         'avg_h_mse': avg_h_mse,
         'avg_d_mse': avg_d_mse,
         'vib_risk': round(vib_risk, 1),
-        'vis_risk': visual_score,
+        'vis_risk': round(visual_score, 1),
         'final_risk': round(final_risk, 1),
+        'img_data': img_data,
         'h_mse_dist': h_mse.tolist(),
         'd_mse_dist': d_mse.tolist(),
         'h_f': h_f[:300], 'h_p': h_p[:300],

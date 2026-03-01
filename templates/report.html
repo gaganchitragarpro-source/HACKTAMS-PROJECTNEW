@@ -133,8 +133,8 @@
             {% endif %}
 
             <div class="metric-row">
-                <div><strong>Vibration AI Output:</strong> {{ d.vib_risk }}%</div>
-                <div><strong>Visual CNN Output:</strong> {{ d.vis_risk }}%</div>
+                <div><strong>Vibration AI Risk (65%):</strong> {{ d.vib_risk }}%</div>
+                <div><strong>Visual CNN Risk (35%):</strong> {{ d.vis_risk }}%</div>
             </div>
         </div>
 
@@ -185,6 +185,35 @@
         <p style="font-size: 0.85em; text-align: center; color: #666; font-style: italic;">
             Figure 3: Parseval Energy Ratios computed across individual inference windows.
         </p>
+
+        <!-- CONVOLUTIONAL NEURAL NETWORK -->
+        {% if d.img_data %}
+        <h2>5. Optical Damage Analysis (Grad-CAM)</h2>
+        <p>
+            An EfficientNet-B3 Convolutional Neural Network (CNN) processed the uploaded structural photography.
+            The model extracted spatial features and utilized Gradient-weighted Class Activation Mapping (Grad-CAM) to
+            generate a focal heatmap of localized structural damage.
+        </p>
+
+        <div style="text-align: center; margin: 30px 0;">
+            <img src="{{ url_for('static', filename=d.img_data.url) }}" alt="Grad-CAM Heatmap"
+                style="max-width: 100%; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+            <p style="font-size: 0.85em; color: #666; font-style: italic; margin-top: 10px;">
+                Figure 4: AI-generated Grad-CAM overlay highlighting visual defects.
+            </p>
+        </div>
+
+        <div style="background: #f6f8fa; padding: 15px; border-radius: 4px; border-left: 4px solid #58a6ff;">
+            <strong>Primary Classification:</strong> {{ d.img_data.class | replace('_', ' ') | title }} ({{
+            d.img_data.conf }}% Confidence)<br>
+            <strong>Probability Distribution:</strong>
+            <ul style="margin-top: 5px; margin-bottom: 0;">
+                {% for k, v in d.img_data.probs.items() %}
+                <li>{{ k | replace('_', ' ') | title }}: {{ v }}%</li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
 
         <div style="text-align: center; margin-top: 60px;">
             <a href="/"
