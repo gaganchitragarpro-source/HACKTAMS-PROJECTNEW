@@ -291,4 +291,5 @@ def analyze():
     return render_template('report.html', data=json.dumps(report_data), d=report_data)
 
 if __name__ == '__main__':
-    app.run(debug=True, port=5000)
+    # Bind to 0.0.0.0 so external smartphones on the same Wi-Fi can connect!
+    app.run(host='0.0.0.0', debug=True, port=5000)
