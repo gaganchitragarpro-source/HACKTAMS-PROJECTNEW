@@ -78,13 +78,16 @@ def process_csv(filepath):
     col_x, col_y, col_z = None, None, None
     for c in df.columns:
         c_lower = c.lower()
-        if 'fx' in c_lower or 'ax' in c_lower or 'x' == c_lower.strip(): col_x = c
-        elif 'fy' in c_lower or 'ay' in c_lower or 'y' == c_lower.strip(): col_y = c
-        elif 'fz' in c_lower or 'az' in c_lower or 'z' == c_lower.strip(): col_z = c
+        if ('acceleration' in c_lower and 'x' in c_lower) or 'fx' in c_lower or 'ax' in c_lower or 'x' == c_lower.strip(): col_x = c
+        elif ('acceleration' in c_lower and 'y' in c_lower) or 'fy' in c_lower or 'ay' in c_lower or 'y' == c_lower.strip(): col_y = c
+        elif ('acceleration' in c_lower and 'z' in c_lower) or 'fz' in c_lower or 'az' in c_lower or 'z' == c_lower.strip(): col_z = c
         
     if not col_x or not col_y or not col_z: return None, None, None
         
-    mag = np.sqrt(df[col_x]**2 + df[col_y]**2 + df[col_z]**2) - 1.0
+    mag = np.sqrt(df[col_x]**2 + df[col_y]**2 + df[col_z]**2)
+    # Dynamically mean-center the signal to 0. 
+    # This automatically handles BOTH sensors "With Gravity" (subtracts ~9.8 or ~1.0) and "Without Gravity" (subtracts ~0)
+    mag = mag - np.mean(mag)
     wins = [mag[i:i+1280].values for i in range(0, len(mag)-1280, 640)]
     if not wins: return None, None, None
     

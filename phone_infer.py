@@ -125,18 +125,19 @@ def process_physics_toolbox_csv(csv_path):
     col_x, col_y, col_z = None, None, None
     for c in df.columns:
         c_lower = c.lower()
-        if 'fx' in c_lower or 'ax' in c_lower or 'x' == c_lower.strip(): col_x = c
-        elif 'fy' in c_lower or 'ay' in c_lower or 'y' == c_lower.strip(): col_y = c
-        elif 'fz' in c_lower or 'az' in c_lower or 'z' == c_lower.strip(): col_z = c
+        if ('acceleration' in c_lower and 'x' in c_lower) or 'fx' in c_lower or 'ax' in c_lower or 'x' == c_lower.strip(): col_x = c
+        elif ('acceleration' in c_lower and 'y' in c_lower) or 'fy' in c_lower or 'ay' in c_lower or 'y' == c_lower.strip(): col_y = c
+        elif ('acceleration' in c_lower and 'z' in c_lower) or 'fz' in c_lower or 'az' in c_lower or 'z' == c_lower.strip(): col_z = c
         
     if not col_x or not col_y or not col_z:
         print(f"❌ Could not identify X/Y/Z structural columns in {csv_path}")
         print(f"Columns found: {df.columns.tolist()}")
         return None
         
-    # Calculate magnitude of acceleration vibration 
-    # Subtract 1G (gravity) to get pure vibration if the phone is resting
-    mag = np.sqrt(df[col_x]**2 + df[col_y]**2 + df[col_z]**2) - 1.0
+    mag = np.sqrt(df[col_x]**2 + df[col_y]**2 + df[col_z]**2)
+    # Dynamically mean-center the signal to 0. 
+    # This automatically handles BOTH sensors "With Gravity" (subtracts ~9.8 or ~1.0) and "Without Gravity" (subtracts ~0)
+    mag = mag - np.mean(mag)
     
     # Slice the continuous signal into 10-second (1280 sample) chunks for the AI
     window_pts = 1280
