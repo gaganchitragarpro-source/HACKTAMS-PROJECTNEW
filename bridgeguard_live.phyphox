@@ -28,7 +28,7 @@
     <network>
         <!-- POSTing the buffers out over the local network -->
         <!-- We default the URL to LOCALHOST for now (127.0.0.1) but the user can hit the gear icon in the app to change the IP address to their exact Wi-Fi address -->
-        <connection id="bridgeguard-stream" service="http/post" address="http://127.0.0.1:5000/api/stream" interval="0.2">
+        <connection id="bridgeguard-stream" service="http/post" address="http://10.125.208.80:5000/api/stream" interval="0.2">
             <send id="x" type="buffer">accX</send>
             <send id="y" type="buffer">accY</send>
             <send id="z" type="buffer">accZ</send>
