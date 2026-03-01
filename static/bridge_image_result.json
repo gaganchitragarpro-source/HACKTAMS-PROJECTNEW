@@ -1,14 +1,14 @@
 {
-  "predicted_class": "exposed_bars",
-  "confidence": 0.3095240294933319,
+  "predicted_class": "spallation",
+  "confidence": 0.43848538398742676,
   "all_probs": {
-    "background": 0.08893240988254547,
-    "crack": 0.19086159765720367,
-    "corrosion_stain": 0.08783993124961853,
-    "efflorescence": 0.10631229728460312,
-    "exposed_bars": 0.3095240294933319,
-    "spallation": 0.2165297567844391
+    "background": 0.06935697048902512,
+    "crack": 0.2167157232761383,
+    "corrosion_stain": 0.06846547871828079,
+    "efflorescence": 0.056683190166950226,
+    "exposed_bars": 0.15029314160346985,
+    "spallation": 0.43848538398742676
   },
-  "visual_risk_score": 66.04,
+  "visual_risk_score": 68.21,
   "image_path": "uploads/bridge_image.jpg"
 }

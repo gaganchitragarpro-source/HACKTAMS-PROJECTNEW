@@ -181,9 +181,9 @@ def analyze():
     if deviation <= 0:
         vib_risk = 0.0
     else:
-        # Scale the deviation to the THRESHOLD. If deviation hits the threshold, risk = 75%.
-        # If it doubles the threshold, risk = 100%.
-        vib_risk = min(100.0, (deviation / THRESHOLD) * 75.0)
+        # User is violently shaking a phone in their hand, which generates MASSIVE noise (often 10x the threshold).
+        # We divide the deviation by (THRESHOLD * 4) to scale down these huge artificial spikes so it feels more progressive.
+        vib_risk = min(100.0, (deviation / (THRESHOLD * 4.0)) * 100.0)
         
     final_risk = (vib_risk * 0.65) + (visual_score * 0.35)
     
